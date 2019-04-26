@@ -8,78 +8,99 @@ ui <- fluidPage(
   
   # Sidebar with controls to select a dataset and specify the number
   # of observations to view
-  sidebarPanel(width=12,
-               "High Risk Firm", 
+  
+  sidebarPanel(width = 4,
+               "High Risk Firm",
                fluidRow(
-                 column(2,
-                        numericInput("stf1", "Avg. Staff:",9)), 
-                 column(2,
-                        numericInput("day1", "Avg. days:",261)),
-                 column(2,
-                        numericInput("max1", "Total Firms in the group:",27)),
-                 column(2,
+                 column(4,
+                        numericInput("stf1", "Avg. Staff:",9)),
+                 column(4,
+                        numericInput("day1", "Avg. days:",261))
+                      
+               ),
+               "Med-High Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("stf2", "Avg. Staff:",6)), 
+                 column(4,
+                        numericInput("day2", "Avg. days:",186))
+               
+               ),
+               "Med-Low Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("stf3", "Avg. Staff:",4)),
+                 column(4,
+                        numericInput("day3", "Avg. days:",143))),
+               "Low Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("stf4", "Avg. Staff:",3)),
+                 column(4,
+                        numericInput("day4", "Avg. days:",109)))
+  ),
+  
+  sidebarPanel(width = 4,
+               "High Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("max1", "Total Firms in the group:",27))
+                 
+               ),
+               "Med-High Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("max2", "Total Firms in the group:",334))
+                 
+               ),
+               "Med-Low Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("max3", "Total Firms in the group:",1289))
+               ),
+               "Low Risk Firm",
+               fluidRow(
+                 column(4,
+                        numericInput("max4", "Total Firms in the group:",1580))
+  )),
+  
+  sidebarPanel(width = 4,
+               "High Risk Firm",
+               fluidRow(
+                 column(4,
                         numericInput("min1", "Commitment Exams:",7)),
-                 column(2,
+                 column(4,
                         numericInput("risk1", "Risk Exams:",20))
                  
                ),
                "Med-High Risk Firm",
                fluidRow(
-                 column(2,
-                        numericInput("stf2", "Avg. Staff:",6)), 
-                 column(2,
-                        numericInput("day2", "Avg. days:",186)),
-                 column(2,
-                        numericInput("max2", "Total Firms in the group:",334)),
-                 column(2,
+                 column(4,
                         numericInput("min2", "Commitment Exams:",35)),
-                 column(2,
+                 column(4,
                         numericInput("risk2", "Risk Exams:",299))
+                 
                ),
-               
                "Med-Low Risk Firm",
                fluidRow(
-                 column(2,
-                        numericInput("stf3", "Avg. Staff:",4)),
-                 column(2,
-                        numericInput("day3", "Avg. days:",143)),
-                 column(2,
-                        numericInput("max3", "Total Firms in the group:",1289)),
-                 column(2,
+                 column(4,
                         numericInput("min3", "Commitment Exams:",159)),
-                 column(2,
+                 column(4,
                         numericInput("risk3", "Risk Exams:",0))
                ),
-               
-               
                "Low Risk Firm",
                fluidRow(
-                 column(2,
-                        numericInput("stf4", "Avg. Staff:",3)),
-                 column(2,
-                        numericInput("day4", "Avg. days:",109)),
-                 column(2,
-                        numericInput("max4", "Total Firms in the group:",1580)),
-                 column(2,
+                 column(4,
                         numericInput("min4", "Commitment Exams:",222)),
-                 column(2,
+                 column(4,
                         numericInput("risk4", "Risk Exams:",0))
-               ),
-               
-               # "Trading/Execution Firm",
-               # fluidRow(
-               #   column(3,
-               #          numericInput("stf5", "Avg. Staff:",4)),
-               #   column(3,
-               #          numericInput("day5", "Avg. days:",155)),
-               #   column(3,
-               #          numericInput("min5", "Min Exams (commitment):",0)),
-               #   column(3,
-               #          numericInput("max5", "Total Firms in the group:",356))
-               # ),
-               # 
-               "Other Assumptions",
+               )
+  ),
+              
+  sidebarPanel(width=12,
                fluidRow(
+                 column(12,    
+                        h3("Other Assumptions")),
                  column(2,
                         numericInput("ttstf", "Total Staff Available",600)),
                  column(2,
@@ -87,7 +108,11 @@ ui <- fluidPage(
                  #column(2,
                  #       numericInput("same", "Exams to be Executed Simultaneouly",4)),
                  column(2,
-                        numericInput("utl", "Utilization Rate",0.75))
+                        numericInput("utl", "Utilization Rate",0.75)),
+                 column(2,
+                        tags$strong("Simutaneous exams for each examiners"),
+                        verbatimTextOutput("same")
+                 )
                ),
                
                mainPanel(
@@ -119,7 +144,9 @@ server <-function(input, output) {
     colnames(in_t) <- c("Commitment","Risk ","Total Input")
     print(in_t)
   })
+  
   # Generate a summary of the dataset
+  
   
   output$e1 <- DT::renderDataTable({
     
@@ -146,12 +173,17 @@ server <-function(input, output) {
     ## define constraints
     resource_constraint <- input$ttstf*input$examsf
     
-    total=input$min1*input$stf1+input$min2*input$stf2+input$min3*input$stf3+input$min4*input$stf4
+    total=(input$min1+1)*input$stf1+(1+input$min2)*input$stf2+(1+input$min3)*input$stf3+(1+input$min4)*input$stf4
     hi=input$day1/365
     mh=input$day2/365
     ml=input$day3/365
     lo=input$day4/365
     overlap=input$examsf*(hi*input$stf1*input$min1+mh*input$stf2*input$min2+ml*input$stf3*input$min3+lo*input$stf4*input$min4)/total +0.5
+    overlap=max(4,overlap)
+    
+    output$same<-renderText({ceiling(overlap)})
+    
+    
     time_constraint <- (input$ttstf*365*input$utl*overlap)
     # cm <- 0
     # cc <- 0
@@ -214,6 +246,7 @@ server <-function(input, output) {
     print(t2)
   })
   
+
   
 }
 
