@@ -1,98 +1,175 @@
 
-#setwd("G:/Operational Risk/Support to Strategy/2019")
-
+setwd('/ext/home/analyst')
 library("xlsx")
-library(formattable)
-
-setwd("/ext/home/analyst")
 load("fin_data")
-
 
 field.names <- read.xlsx("SSOI_line_items.xlsx",1)
 
 get.ssoi <- function(crd,field.names,my.data)
 {
+  
+  #Grab data from DASL
+  
+  #my.data <- dbGetQuery(conn, paste("
+  #
+  #                                    
+  #                                  select FIELD_0025_DT,
+  #
+  #
+  #FIELD_13935_AM,	FIELD_13937_AM,	FIELD_11001_AM,	FIELD_11002_AM,	FIELD_11003_AM,	FIELD_11315_AM,	FIELD_11004_AM,	FIELD_11005_AM,	FIELD_11316_AM,	FIELD_13938_AM,	FIELD_11318_AM,	FIELD_11006_AM,	FIELD_13939_AM,	FIELD_11320_AM,	FIELD_13991_AM,	FIELD_11007_AM,	FIELD_11008_AM,	FIELD_13940_AM,	FIELD_13970_AM,	FIELD_11020_AM,	FIELD_11021_AM,	FIELD_11022_AM,	FIELD_11029_AM,	FIELD_13921_AM,	FIELD_13922_AM,	FIELD_13923_AM,	FIELD_13924_AM,	FIELD_13925_AM,	FIELD_13926_AM,	FIELD_13903_AM,	FIELD_11032_AM,	FIELD_11034_AM,	FIELD_11036_AM,	FIELD_11038_AM,	FIELD_13901_AM,	FIELD_13902_AM,	FIELD_11396_AM,	FIELD_11040_AM,	FIELD_11041_AM,	FIELD_11042_AM,	FIELD_11043_AM,	FIELD_11044_AM,	FIELD_13904_AM,	FIELD_13951_AM,	FIELD_11045_AM,	FIELD_13950_AM,	FIELD_13952_AM,	FIELD_11060_AM,	FIELD_11061_AM,	FIELD_13960_AM,	FIELD_11062_AM,	FIELD_11063_AM,	FIELD_11064_AM,	FIELD_13953_AM,	FIELD_11065_AM,	FIELD_11069_AM,	FIELD_11070_AM,	FIELD_11071_AM,	FIELD_11072_AM,	FIELD_11079_AM,	FIELD_11081_AM,	FIELD_11082_AM,	FIELD_11089_AM,	FIELD_13955_AM,	FIELD_11090_AM,	FIELD_11091_AM,	FIELD_13975_AM,	FIELD_11092_AM,	FIELD_13980_AM,	FIELD_11093_AM,	FIELD_11094_AM,	FIELD_11095_AM,	FIELD_11096_AM,	FIELD_11097_AM,	FIELD_11098_AM,	FIELD_11099_AM,	FIELD_11100_AM,	FIELD_11101_AM,	FIELD_11102_AM,	FIELD_11109_AM,	FIELD_13990_AM,	FIELD_11126_AM,	FIELD_11121_AM,	FIELD_11123_AM,	FIELD_11125_AM,	FIELD_13995_AM,	FIELD_14030_AM,	FIELD_14110_AM,	FIELD_14040_AM,	FIELD_11200_AM,	FIELD_11201_AM,	FIELD_11202_AM,	FIELD_11203_AM,	FIELD_11209_AM,	FIELD_14055_AM,	FIELD_14145_AM,	FIELD_11210_AM,	FIELD_14135_AM,	FIELD_14140_AM,	FIELD_11211_AM,	FIELD_11212_AM,	FIELD_11213_AM,	FIELD_11219_AM,	FIELD_11220_AM,	FIELD_11221_AM,	FIELD_11229_AM,	FIELD_11230_AM,	FIELD_11231_AM,	FIELD_11232_AM,	FIELD_11233_AM,	FIELD_11234_AM,	FIELD_11235_AM,	FIELD_11236_AM,	FIELD_11237_AM,	FIELD_14075_AM,	FIELD_11240_AM,	FIELD_11241_AM,	FIELD_11249_AM,	FIELD_11250_AM,	FIELD_14060_AM,	FIELD_11251_AM,	FIELD_14150_AM,	FIELD_11252_AM,	FIELD_14080_AM,	FIELD_14190_AM,	FIELD_14195_AM,	FIELD_11253_AM,	FIELD_11254_AM,	FIELD_14170_AM,	FIELD_11255_AM,	FIELD_11256_AM,	FIELD_11269_AM,	FIELD_11281_AM,	FIELD_11283_AM,	FIELD_11285_AM,	FIELD_14100_AM,	FIELD_14200_AM,	FIELD_14210_AM,	FIELD_14220_AM,	FIELD_14222_AM,	FIELD_14224_AM,	FIELD_14225_AM,	FIELD_14230_AM
+  #
+  # FROM efocus_focusowner.SSOI_FLNG_DTL a inner join 
+  #
+  #(SELECT max(SEQ_NB) as max_seq_nb FROM efocus_focusowner.flng_meta meta where form_type_nb=13 and firm_crd_nb= ", crd, 
+  #                                  
+  #                                  "group by  as_of_dt order by  as_of_dt )  b
+  #on a.seq_nb=b.max_seq_nb
+  #inner join efocus_focusowner.flng_meta c
+  #on a.seq_nb=c.seq_nb
+  #
+  #where FIELD_0025_DT > DATE '",  Sys.Date()-365*2.5,"'     ",sep=""))                      
+  
+  #Grab dates and take it out of the numerical matrix
+  
   my.data[,"field_0025_dt"] <- gsub("-","/",substring(my.data[,"field_0025_dt"],1,10))
   dimnames(my.data)[[1]] <- my.data[,1]
   my.data <- my.data[,-1]
   my.data.matrix <- t(my.data)
   
+  
+  #Make sure that no more than 8 quarters are present
   n <- dim(my.data.matrix)[2]
   my.data.matrix <- my.data.matrix[,n:1]
   my.data.matrix <- my.data.matrix[,1:pmin(8,n)]
+  my.dates <- rev(dimnames(my.data)[[1]])[1:pmin(8,n)]
+  
+  
+  #Get rid of rows that are all zeros
   n <-  dim(my.data.matrix)[2]
   my.data.matrix[is.na(my.data.matrix)] <- 0
   bad.rows <- apply(my.data.matrix,1,function(x) sum(x=="0"))
   my.data.matrix <- my.data.matrix[bad.rows < n,]
   
+  #Get last row number for insert plot
+  last.row<- dim(my.data.matrix)[1]+1
   
-  Totals<-c()
-  Avg.Qtr<-c()
-  percent.of.Total8Qtrs<-c()
-  Totals2018<-c()
-  Totals2017<-c()
-  percent.of.Total2018<-c()
-  year.over.year<-c()
-  year.over.year.percent<-c()
-  totalrow<-match("field_14030_am",dimnames(my.data.matrix)[[1]])
-  totalexpense<-match("field_14200_am",dimnames(my.data.matrix)[[1]])
-  for (i in seq(1,length(my.data.matrix[,1]))){
-    Totals[[i]]<-sum(my.data.matrix[i,1:8])
-    Avg.Qtr[[i]]<-sum(my.data.matrix[i,1:8])/8
-    Totals2018[[i]]<-sum(my.data.matrix[i,1:4])
-    Totals2017[[i]]<-sum(my.data.matrix[i,5:8])
-  }
-  for (i in seq(1,length(Totals2018))){
-    percent.of.Total8Qtrs[[i]]<-percent(Totals[[i]]/Totals[[totalrow]])
-    percent.of.Total2018[[i]]<-percent(Totals2018[[i]]/Totals2018[[totalrow]])
-    year.over.year[[i]]<-percent(Totals2018[[i]]-Totals2017[[i]])
-    year.over.year.percent[[i]]<-percent((Totals2018[[i]]-Totals2017[[i]])/Totals2017[[i]])
-  }
-  my.data.matrix<-cbind(my.data.matrix,Totals,Avg.Qtr,percent.of.Total8Qtrs,percent.of.Total2018,Totals2018,Totals2017,year.over.year,year.over.year.percent)
-  my.data.matrix
-  #match("field_11126_am ",dimnames(my.data.matrix)[[1]])
-  #which( dimnames(my.data.matrix)[1]=="field_11126_am " )
-  #my.data.matrix
+  #get the index for total revenue and total expenses for % calc later on in code
+  total.rev.row<-match("field_14030_am",dimnames(my.data.matrix)[[1]])
+  total.expense.row<-match("field_14200_am",dimnames(my.data.matrix)[[1]])
   
+  #convert field numbers into meaningful item names
   my.fields <- toupper(dimnames(my.data.matrix)[[1]])
   idx <- match(my.fields, as.character(field.names[,"clmn_nm"]),nomatch = 0)
   my.fields[idx!=0] <- as.character(field.names[idx[idx!=0],"itemdescription"])
   dimnames(my.data.matrix)[[1]] <- my.fields
   
-  wb<-createWorkbook(type="xlsx")
+  #calculate totals and add the calculated columns
+  total.revenue <- rev(my.data.matrix[total.rev.row,1:8]) # to be used for plotting
+  total.expense <- rev(my.data.matrix[total.expense.row,1:8]) # to be used for plotting
+  dates.for.plot <- rev(my.dates)
+  attributes(total.expense)
   
-  myformat <- CellStyle(wb, dataFormat=DataFormat("#,##0_);(#,##0)"), alignment=NULL,  border=NULL, fill=NULL, font=NULL)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
-  highlight<- CellStyle(wb)+Fill(foregroundColor = 'yellow', backgroundColor = 'yellow',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
-  blueback<-CellStyle(wb)+Fill(foregroundColor = 'light blue', backgroundColor = 'light blue',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
-  greenback<-CellStyle(wb)+Fill(foregroundColor = 'light green', backgroundColor = 'light green',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
+  totals <- rowSums(my.data.matrix)
+  avg <- rowMeans(my.data.matrix)
+  percent.of.total <- totals*0
+  percent.of.total[1:total.rev.row] <- totals[1:total.rev.row] / totals[total.rev.row]
+  percent.of.total[(total.rev.row+1):total.expense.row] <- totals[(total.rev.row+1):total.expense.row] / totals[total.expense.row] 
+  
+  most.recent.4 <- rowSums(my.data.matrix[,1: pmin(4,n)])
+  if(n > 4)
+  {
+    least.recent.4 <- rowSums(my.data.matrix[,4:n])
+  }
+  else
+    least.recent.4 <- rep(0,dim(my.data.matrix)[1])
+  
+  year.over.year.dollar <- most.recent.4-least.recent.4
+  year.over.year.percent <- year.over.year.dollar/least.recent.4
+  
+  my.data.matrix <- cbind(my.data.matrix, Totals=totals, AvgPerQtr=avg,PercentOfTotal=percent.of.total,
+                          Last4Quarters=most.recent.4,Prior4Quarters=least.recent.4,
+                          YearOverYearDollars=year.over.year.dollar,YearOverYearPercent=year.over.year.percent)
+  
+  #create workbook
+  wb<-xlsx::createWorkbook(type="xlsx")
+  
+  #define cell styles
+  comma.format <- CellStyle(wb, dataFormat=DataFormat("#,##0_);(#,##0)"), alignment=NULL,  border=NULL, fill=NULL, font=NULL)
+  percent.format <- CellStyle(wb, dataFormat=DataFormat("0%"), alignment=NULL,  border=NULL, fill=NULL, font=NULL)
+  highlight<- xlsx::CellStyle(wb)+DataFormat("#,##0_);(#,##0)") +  Fill(foregroundColor = 'yellow', backgroundColor = 'yellow',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
+  highlight.percent <-xlsx::CellStyle(wb)+DataFormat("0%") +  Fill(foregroundColor = 'yellow', backgroundColor = 'yellow',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
+  blueback<-xlsx::CellStyle(wb)+Fill(foregroundColor = 'light blue', backgroundColor = 'light blue',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
+  greenback<-xlsx::CellStyle(wb)+Fill(foregroundColor = 'light green', backgroundColor = 'light green',pattern = "SOLID_FOREGROUND")+Font(wb, isBold=TRUE)+Border(color="black", position=c("BOTTOM", "LEFT","TOP","RIGHT"), pen=c("BORDER_THIN", "BORDER_THIN","BORDER_THIN","BORDER_THIN"))
   
   
-  sheet <- createSheet(wb, sheetName = "SSOI")
-  
+  #Add cell styles to each column
+  sheet <- xlsx::createSheet(wb, sheetName = "SSOI")
   n <- dim(my.data.matrix)[2]
-  dfColIndex <- rep(list(myformat), n)
+  dfColIndex <- rep(list(comma.format), n-5)
+  dfColIndex$newcol1 <- percent.format
+  dfColIndex$newCol2 <- comma.format
+  dfColIndex$newCol3 <- comma.format
+  dfColIndex$newCol4 <- comma.format
+  dfColIndex$newCol5 <- percent.format
   names(dfColIndex) <- 1:n
   
-  setColumnWidth(sheet,colIndex = 1,colWidth = 90)
-  setColumnWidth(sheet, colIndex=2:(n+1), colWidth=21)
+  #Set Column width
+  xlsx::setColumnWidth(sheet,colIndex = 1,colWidth = 90)
+  xlsx::setColumnWidth(sheet, colIndex=2:(n+1), colWidth=21)
   
   
+  #Create the data frame to be exported to Excel
   addDataFrame(my.data.matrix, sheet, startRow=1, startColumn=1, colStyle = dfColIndex)
-  rows<-getRows(sheet)
-  cells<-getCells(rows)
+  first.row<-getRows(sheet,1)
+  cells<-getCells(first.row)
   setCellValue(cells[[1]],'Description')
-  setCellStyle(cells[[17*27+9]],highlight)
-  for (i in seq((totalrow)*17+1,(totalrow+1)*17)){setCellStyle(cells[[i]],highlight)}
-  for (i in seq((totalexpense)*17+1,(totalexpense+1)*17)){setCellStyle(cells[[i]],highlight)}
-  for (i in seq(1,17)){setCellStyle(cells[[i]],blueback)}
-  for (i in seq(2,9)){setCellStyle(cells[[i]],greenback)}
-  #force equal
-  date<-c('2018/12/31', '2018/09/30' ,'2018/06/30', '2018/03/31', '2017/12/31' ,'2017/09/30', '2017/06/30', '2017/03/31')
-  for (i in seq(2,9)){setCellValue(cells[[i]],date[i-1])}
+  
+  
+  #Get dates in column names
+  
+  for(i in 1:length(my.dates)) {setCellValue(cells[[i+1]], my.dates[i])}
+  
+  
+  #Highlight in yellow and bold total revenue row and total expense row
+  
+  rev.row <- getRows(sheet,total.rev.row+1)
+  cells <- getCells(rev.row)
+  for(i in 1:(n+1)) {xlsx::setCellStyle(cells[[i]], highlight)}
+  
+  setCellValue(cells[[n-3]]," ")
+  xlsx::setCellStyle(cells[[n+1]], highlight.percent )
+  
+  expense.row <- getRows(sheet,total.expense.row+1)
+  cells <- getCells(expense.row)
+  for(i in 1:(n+1)) {setCellStyle(cells[[i]], highlight)}
+  
+  setCellValue(cells[[n-3]]," ")
+  xlsx::setCellStyle(cells[[n+1]], highlight.percent )
+  
+  
+  #Code for adding plot - Peiwen, please add your code here
+  #Use total.revenue , total.expense, dates.for.plot as data for plot defined above
+  #use only xlsx package
+  png('plot.png',height=1800, width = 2400,res=300,pointsize = 10)
+  a<-c(1,2,3,4,5,6,7,8)
+  options(scipen=10000)
+  prettyNum(total.revenue,big.mark=",")
+  prettyNum(total.expense,big.mark=",")
+  par(mar=c(7,10,7,7))
+  plot(a,total.expense, type="o",col='red',las=2,ylab='',ylim = c(min(total.expense),max(total.revenue)),xaxt = 'n')
+  lines(a,total.revenue,type="o",col='green',las=2,axes=FALSE)
+  title(main ="Plot for Revenue VS Expenses", sub='green--Revenue,red--Expense',xlab = 'Date',ylab='')
+  axis(1,at=a,labels = dates.for.plot)
+  dev.off()
+  addPicture('plot.png',sheet,scale=1,startRow = last.row+1,startColumn =1)
+  res<-file.remove('plot.png')
+  
+  
   
   saveWorkbook(wb, paste("findata_",crd,".xlsx",sep=""))
   
   
   return(my.data.matrix)                     
 }
+
 get.ssoi(361,field.names,my.data)
